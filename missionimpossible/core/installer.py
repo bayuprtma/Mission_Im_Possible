@@ -68,9 +68,13 @@ def validate_environment(packages: List[str], python_exe: Optional[str] = None) 
     python_exe = python_exe or sys.executable
     print("[MissionImPossible] Validating imports ...")
     for pkg in packages:
-        code = run([python_exe, "-c", f\"import {pkg.split('-')[0].replace('-', '_')}\" ])
+        # ambil nama modul (tanpa tanda -)
+        mod_name = pkg.split("-")[0].replace("-", "_")
+        code = run([python_exe, "-c", f"import {mod_name}"])
         if code != 0:
-            print(f"[MissionImPossible] WARNING: Failed to import '{pkg}'.")
+            print(f"[MissionImPossible] WARNING: Failed to import '{mod_name}'.")
         else:
-            print(f"[MissionImPossible] OK: {pkg}")
+            print(f"[MissionImPossible] OK: {mod_name}")
     print("[MissionImPossible] Validation finished.")
+
+
