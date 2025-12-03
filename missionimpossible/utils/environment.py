@@ -14,9 +14,24 @@ from typing import Dict
 
 
 def write_requirements_txt(stack: Dict[str, str], path: str = "requirements.txt") -> None:
-    """Save stack as a standard requirements.txt file."""
+    """
+    Save stack as a standard requirements.txt file.
+
+    Jika value sudah mengandung operator versi (>, <, =, ~),
+    maka ditulis apa adanya. Kalau tidak, akan dibuat "name==version".
+    """
     p = Path(path)
-    lines = [f"{name}=={ver}\n" for name, ver in stack.items()]
+    lines = []
+    for name, spec in stack.items():
+        spec = str(spec).strip()
+        if any(op in spec for op in (">", "<", "=", "~")):
+            # Sudah berupa spec lengkap, contoh: "ultralytics>=8.3.234"
+            line = f"{spec}\n"
+        else:
+            # Hanya angka versi, contoh: "2.17.0"
+            line = f"{name}=={spec}\n"
+        lines.append(line)
+
     p.write_text("".join(lines), encoding="utf-8")
 
 
@@ -26,7 +41,7 @@ def write_environment_toml(stack: Dict[str, str], path: str = "environment.toml"
 
     [packages]
       tensorflow = "2.17.0"
-      nltk = "3.8.1"
+      ultralytics = ">=8.3.234"
     """
     body_lines = [f'  {k} = "{v}"' for k, v in stack.items()]
     content = "[packages]\n" + "\n".join(body_lines) + "\n"
@@ -44,8 +59,13 @@ def write_conda_env(stack: Dict[str, str], path: str = "environment.yml") -> Non
         "  - pip\n",
         "  - pip:\n",
     ]
-    for name, ver in stack.items():
-        lines.append(f"    - {name}=={ver}\n")
+    for name, spec in stack.items():
+        spec = str(spec).strip()
+        if any(op in spec for op in (">", "<", "=", "~")):
+            lines.append(f"    - {spec}\n")
+        else:
+            lines.append(f"    - {name}=={spec}\n")
+
     Path(path).write_text("".join(lines), encoding="utf-8")
 
 
@@ -53,16 +73,21 @@ def write_dockerfile(stack: Dict[str, str], path: str = "Dockerfile") -> None:
     """
     Generate a minimal Dockerfile that installs the resolved stack with pip.
 
-    Resulting Dockerfile:
-
     FROM python:3.11-slim
     WORKDIR /app
     RUN pip install --upgrade pip \
-        && pip install pkg1==ver1 pkg2==ver2 ...
+        && pip install <all packages>
     CMD ["python"]
     """
-    # Susun daftar 'pkg==ver'
-    pkgs = [f"{name}=={ver}" for name, ver in stack.items()]
+    # Susun daftar constraint seperti di requirements.txt
+    pkgs: list[str] = []
+    for name, spec in stack.items():
+        spec = str(spec).strip()
+        if any(op in spec for op in (">", "<", "=", "~")):
+            pkgs.append(spec)
+        else:
+            pkgs.append(f"{name}=={spec}")
+
     pkgs_str = " ".join(pkgs) if pkgs else ""
 
     docker_lines = [
@@ -71,7 +96,7 @@ def write_dockerfile(stack: Dict[str, str], path: str = "Dockerfile") -> None:
         "WORKDIR /app\n",
         "\n",
         "RUN pip install --upgrade pip \\\n",
-        "    && pip install " + pkgs_str + "\n",
+        f"    && pip install {pkgs_str}\n",
         "\n",
         'CMD ["python"]\n',
     ]
