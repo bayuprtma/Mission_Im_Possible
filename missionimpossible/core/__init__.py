@@ -1,15 +1,16 @@
 """
-MissionImPossible v0.3.0 - Universal ML Dependency Resolver
-Dynamic YOLOv8/v10/v11 + CNN/NLP stack resolution
+Core subpackage for MissionImPossible.
 """
-__version__ = "0.3.0"
 
-from .core.detector import detect_all_conflicts
-from .core.resolver import resolve_universal_stack
-from .core.installer import install_stack, validate_environment
-from .resolvers.yolo_resolver import resolve_yolo_stack
+from __future__ import annotations
+
+from .detector import detect_all_conflicts        # BUKAN .core.detector
+from .resolver import resolve_universal_stack
+from .installer import install_stack, validate_environment
 
 __all__ = [
-    "detect_all_conflicts", "resolve_universal_stack", 
-    "install_stack", "validate_environment", "resolve_yolo_stack"
+    "detect_all_conflicts",
+    "resolve_universal_stack",
+    "install_stack",
+    "validate_environment",
 ]
