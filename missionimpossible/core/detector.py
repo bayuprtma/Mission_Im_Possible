@@ -1,6 +1,7 @@
 """
 Universal ML Stack Conflict Detector
 """
+from __future__ import annotations
 from ..detectors.cnn_detector import detect_cnn_conflicts
 from ..detectors.nlp_detector import detect_nlp_conflicts
 from ..detectors.vision_detector import detect_vision_conflicts
@@ -23,4 +24,5 @@ def check_pip_conflicts():
     result = subprocess.run([sys.executable, "-m", "pip", "check"], 
                           capture_output=True, text=True)
     return {"conflicts": result.returncode != 0, "details": result.stdout}
+
 
