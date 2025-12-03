@@ -1,0 +1,9 @@
+[stacks.lightweight]
+# CPU-only minimal stack for low-resource machines
+tensorflow-cpu = "2.15.0"
+torch = "2.1.0"
+opencv-python = "4.8.1"
+nltk = "3.8.1"
+scikit-learn = "1.4.0"
+pandas = "2.2.0"
+numpy = "1.26.4"

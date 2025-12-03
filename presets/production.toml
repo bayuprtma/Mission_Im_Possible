@@ -1,0 +1,12 @@
+[stacks.production]
+# More conservative, closer to LTS / server use
+tensorflow = "2.15.0"
+torch = "2.0.1+cu118"
+ultralytics = "8.0.196"
+opencv-python-headless = "4.9.0"
+nltk = "3.8.1"
+transformers = "4.35.2"
+spacy = "3.7.0"
+fastapi = "0.115.0"
+uvicorn = "0.30.0"
+gunicorn = "22.0.0"

@@ -1,0 +1,9 @@
+[stacks.my_thesis]
+# Example custom preset for a specific thesis project
+tensorflow = "2.17.0"
+ultralytics = "8.2.0"
+opencv-python = "4.9.0"
+nltk = "3.8.1"
+transformers = "4.36.0"
+pandas = "2.2.0"
+numpy = "1.26.4"

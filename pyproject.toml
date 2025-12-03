@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "missionimpossible"
+version = "0.3.0"
+description = "Universal CNN+NLP+CV Dependency Resolver with Dynamic YOLO Support"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "MissionImPossible Team"}]
+classifiers = [
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Development Status :: 4 - Beta"
+]
+dependencies = [
+    "requests>=2.31.0",
+    "packaging>=23.2",
+    "tomlkit>=0.12",
+    "typer>=0.9"
+]
+
+[project.scripts]
+missionimpossible = "missionimpossible.cli:main"
