@@ -17,9 +17,9 @@ from ..utils.pypi_api import get_pypi_releases
 
 # Default Torch versions we consider "good" for each YOLO family.
 YOLO_TORCH_MAP_GPU: Dict[str, str] = {
-    "8": "2.1.0+cu121",
-    "10": "2.2.0+cu122",
-    "11": "2.3.0+cu124",  # future-oriented guess
+    "8": "2.1.0",
+    "10": "2.2.0",
+    "11": "2.3.0",  # future-oriented guess
 }
 
 YOLO_TORCH_MAP_CPU: Dict[str, str] = {
@@ -27,6 +27,7 @@ YOLO_TORCH_MAP_CPU: Dict[str, str] = {
     "10": "2.2.0",
     "11": "2.3.0",
 }
+
 
 
 def resolve_yolo_stack(yolo_family: str = "latest", gpu: bool = True) -> Dict[str, str]:
@@ -105,3 +106,4 @@ def get_torch_for_yolo_family(family: str, gpu: bool) -> str:
         return mapping[family]
     # Fallback to YOLOv8 mapping
     return mapping["8"]
+
