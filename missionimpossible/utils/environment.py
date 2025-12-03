@@ -1,108 +1,93 @@
 """
-YOLO resolver for MissionImPossible.
+Environment utilities for MissionImPossible.
 
-- Fetches YOLO (ultralytics) versions from PyPI.
-- Supports YOLOv8 / YOLOv10 / YOLOv11 families.
-- Picks a compatible Torch version (GPU / CPU).
+Provides functions to export the resolved ML stack to common environment specification formats:
+
+- requirements.txt (pip)
+- environment.toml (simple reproducibility format)
+- environment.yml (Conda environment with pip section)
+- Dockerfile (minimal Dockerfile to build image with dependencies installed)
 """
 
 from __future__ import annotations
 
-from typing import Dict, List
-
-from packaging import version
-
-from ..utils.pypi_api import get_pypi_releases
+from pathlib import Path
+from typing import Dict
 
 
-# Reasonable default Torch versions per YOLO family
-YOLO_TORCH_MAP_GPU: Dict[str, str] = {
-    "8": "2.1.0+cu121",
-    "10": "2.2.0+cu122",
-    "11": "2.3.0+cu124",  # future-oriented guess
-}
-
-YOLO_TORCH_MAP_CPU: Dict[str, str] = {
-    "8": "2.1.0",
-    "10": "2.2.0",
-    "11": "2.3.0",
-}
-
-
-def resolve_yolo_stack(yolo_family: str = "latest", gpu: bool = True) -> Dict[str, str]:
+def write_requirements_txt(stack: Dict[str, str], path: str = "requirements.txt") -> None:
     """
-    Resolve YOLO (ultralytics) and Torch versions.
+    Save the stack as a standard pip requirements.txt file.
 
-    Parameters
-    ----------
-    yolo_family : {"latest","v8","v10","v11"}
-        Version family preference. "latest" = auto-detect from PyPI.
-    gpu : bool
-        Whether to prefer GPU-enabled Torch builds.
-
-    Returns
-    -------
-    dict
-        Minimal stack part, e.g. {"ultralytics": "ultralytics>=8.3.234", "torch": "2.2.0+cu122"}.
-        Catatan penting: value untuk key "ultralytics" sudah berupa FULL spec,
-        sehingga di requirements.txt ditulis apa adanya tanpa ditambah "name==" lagi.
+    If a version specifier contains comparison operators ('>', '<', '=', '~'),
+    it is written as-is; otherwise, the exact version is pinned with '=='.
     """
-    releases = get_pypi_releases("ultralytics")
-    latest_stable = get_latest_stable_yolo(releases)
-
-    # Tentukan constraint YOLO berdasarkan keluarga
-    if yolo_family == "v8":
-        yolo_spec = "ultralytics>=8.0.0,<9.0.0"
-        family = "8"
-    elif yolo_family == "v10":
-        yolo_spec = "ultralytics>=10.0.0,<11.0.0"
-        family = "10"
-    elif yolo_family == "v11":
-        yolo_spec = "ultralytics>=11.0.0,<12.0.0"
-        family = "11"
-    else:  # "latest"
-        yolo_spec = f"ultralytics>={latest_stable}"
-        family = infer_family_from_version(latest_stable)
-
-    torch_version = get_torch_for_yolo_family(family, gpu)
-
-    return {
-        # VALUE sudah lengkap; jangan ditambahi "ultralytics==" lagi di environment.py
-        "ultralytics": yolo_spec,
-        "torch": torch_version,
-    }
+    p = Path(path)
+    lines = []
+    for name, spec in stack.items():
+        spec = str(spec).strip()
+        if any(op in spec for op in (">", "<", "=", "~")):
+            lines.append(f"{spec}\n")
+        else:
+            lines.append(f"{name}=={spec}\n")
+    p.write_text("".join(lines), encoding="utf-8")
 
 
-def get_latest_stable_yolo(releases: List[str]) -> str:
+def write_environment_toml(stack: Dict[str, str], path: str = "environment.toml") -> None:
     """
-    Filter out pre-releases and return the highest stable version.
+    Export the stack as a simple TOML file for reproducibility.
+
+    Format:
+
+    [packages]
+      tensorflow = "2.17.0"
+      ultralytics = ">=8.3.234"
     """
-    stable = [
-        v for v in releases
-        if not any(tag in v.lower() for tag in ("a", "b", "rc", "alpha", "beta"))
+    body_lines = [f'  {k} = "{v}"' for k, v in stack.items()]
+    content = "[packages]\n" + "\n".join(body_lines) + "\n"
+    Path(path).write_text(content, encoding="utf-8")
+
+
+def write_conda_env(stack: Dict[str, str], path: str = "environment.yml") -> None:
+    """
+    Export the stack as a Conda environment.yml file with pip section.
+
+    This minimal file includes python and pip, then pip installs all dependencies.
+    """
+    lines = [
+        "name: missionimpossible-env\n",
+        "dependencies:\n",
+        "  - python\n",
+        "  - pip\n",
+        "  - pip:\n",
     ]
-    if not stable:
-        # Defensive fallback
-        return "8.2.48"
-    return sorted(stable, key=version.parse)[-1]
+    for _, spec in stack.items():
+        spec = str(spec).strip()
+        lines.append(f"    - {spec}\n")
+    Path(path).write_text("".join(lines), encoding="utf-8")
 
 
-def infer_family_from_version(ver: str) -> str:
+def write_dockerfile(stack: Dict[str, str], path: str = "Dockerfile") -> None:
     """
-    Infer YOLO family ("8","10","11") from version string.
-    """
-    major = ver.split(".")[0]
-    if major in {"8", "10", "11"}:
-        return major
-    return "8"  # fallback
+    Generate a minimal Dockerfile that installs the stack via pip.
 
+    Resulting Dockerfile example:
 
-def get_torch_for_yolo_family(family: str, gpu: bool) -> str:
+    FROM python:3.11-slim
+    WORKDIR /app
+    RUN pip install --upgrade pip \
+        && pip install pkg1>=1.0 pkg2==2.0 ...
+    CMD ["python"]
     """
-    Return a Torch version appropriate for given YOLO family and GPU flag.
-    """
-    mapping = YOLO_TORCH_MAP_GPU if gpu else YOLO_TORCH_MAP_CPU
-    if family in mapping:
-        return mapping[family]
-    # Fallback to YOLOv8 mapping
-    return mapping["8"]
+    pkgs = [str(spec).strip() for spec in stack.values()]
+    pkgs_str = " ".join(pkgs) if pkgs else ""
+
+    docker_lines = [
+        "FROM python:3.11-slim\n\n",
+        "WORKDIR /app\n\n",
+        "RUN pip install --upgrade pip \\\n",
+        f"    && pip install {pkgs_str}\n\n",
+        'CMD ["python"]\n',
+    ]
+
+    Path(path).write_text("".join(docker_lines), encoding="utf-8")
