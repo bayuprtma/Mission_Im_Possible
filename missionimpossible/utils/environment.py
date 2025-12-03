@@ -1,30 +1,42 @@
 """
 Environment utilities: export resolved stacks to various formats.
+
+- requirements.txt
+- environment.toml
+- Conda environment.yml (pip section)
+- Dockerfile (minimal)
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 from typing import Dict
 
 
 def write_requirements_txt(stack: Dict[str, str], path: str = "requirements.txt") -> None:
-    """Save stack as requirements.txt."""
+    """Save stack as a standard requirements.txt file."""
     p = Path(path)
     lines = [f"{name}=={ver}\n" for name, ver in stack.items()]
     p.write_text("".join(lines), encoding="utf-8")
 
 
 def write_environment_toml(stack: Dict[str, str], path: str = "environment.toml") -> None:
-    """Simple TOML export for reproducibility."""
-    from textwrap import indent
+    """
+    Export stack to a simple TOML file:
 
-    body = "\n".join(f'{k} = "{v}"' for k, v in stack.items())
-    content = "[packages]\n" + indent(body, "  ")
+    [packages]
+      tensorflow = "2.17.0"
+      nltk = "3.8.1"
+    """
+    body_lines = [f'  {k} = "{v}"' for k, v in stack.items()]
+    content = "[packages]\n" + "\n".join(body_lines) + "\n"
     Path(path).write_text(content, encoding="utf-8")
 
 
 def write_conda_env(stack: Dict[str, str], path: str = "environment.yml") -> None:
-    """Very simple conda env writer (pip section)."""
+    """
+    Export stack as a minimal Conda environment.yml using pip section.
+    """
     lines = [
         "name: missionimpossible-env\n",
         "dependencies:\n",
@@ -38,19 +50,30 @@ def write_conda_env(stack: Dict[str, str], path: str = "environment.yml") -> Non
 
 
 def write_dockerfile(stack: Dict[str, str], path: str = "Dockerfile") -> None:
-    """Generate a minimal Dockerfile that installs the stack with pip."""
-    from textwrap import indent
+    """
+    Generate a minimal Dockerfile that installs the resolved stack with pip.
 
-    req_lines = "\n".join(f"{name}=={ver}" for name, ver in stack.items())
-    docker = f"""FROM python:3.11-slim
+    Resulting Dockerfile:
 
-WORKDIR /app
+    FROM python:3.11-slim
+    WORKDIR /app
+    RUN pip install --upgrade pip \
+        && pip install pkg1==ver1 pkg2==ver2 ...
+    CMD ["python"]
+    """
+    # Susun daftar 'pkg==ver'
+    pkgs = [f"{name}=={ver}" for name, ver in stack.items()]
+    pkgs_str = " ".join(pkgs) if pkgs else ""
 
-RUN pip install --upgrade pip \\
-    && pip install \\
-{indent('\\n'.join(f'{n}=={v} \\\\' for n, v in stack.items()), '       ')} 
-    && rm -rf /root/.cache/pip
+    docker_lines = [
+        "FROM python:3.11-slim\n",
+        "\n",
+        "WORKDIR /app\n",
+        "\n",
+        "RUN pip install --upgrade pip \\\n",
+        "    && pip install " + pkgs_str + "\n",
+        "\n",
+        'CMD ["python"]\n',
+    ]
 
-CMD ["python"]
-"""
-    Path(path).write_text(docker, encoding="utf-8")
+    Path(path).write_text("".join(docker_lines), encoding="utf-8")
